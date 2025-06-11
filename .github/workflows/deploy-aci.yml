@@ -44,7 +44,7 @@ jobs:
             --cpu 1 --memory 1.5 \
             --location ${{ secrets.LOCATION }} \
             --restart-policy Never
-            **--os-type Linux**
+            --os-type Linux
 
       - name: Reminder
         run: echo "⚠️ Vergeet niet je ACI handmatig te verwijderen in Azure Portal of via CLI om kosten te besparen."
