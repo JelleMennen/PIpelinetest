@@ -1,0 +1,33 @@
+name: Deploy GoFiber to Azure App Service
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Log in to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Build Docker image
+        run: docker build -t ${{ secrets.ACR_NAME }}.azurecr.io/gofiberapp:latest .
+
+      - name: Push Docker image
+        run: docker push ${{ secrets.ACR_NAME }}.azurecr.io/gofiberapp:latest
+
+      - name: Deploy to Azure Web App (App Service)
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ secrets.APP_SERVICE_NAME }}
+          images: ${{ secrets.ACR_NAME }}.azurecr.io/gofiberapp:latest
+
+      - name: Reminder
+        run: echo "⚠️ Vergeet niet je App Service te stoppen of verwijderen als je klaar bent."
