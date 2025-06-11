@@ -43,7 +43,7 @@ jobs:
             --ports 80 \
             --cpu 1 --memory 1.5 \
             --location ${{ secrets.LOCATION }} \
-            --restart-policy Never
+            --restart-policy Never \
             --os-type Linux
 
       - name: Reminder
