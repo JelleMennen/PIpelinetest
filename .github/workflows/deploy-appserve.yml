@@ -33,4 +33,3 @@ jobs:
           images: ${{ secrets.ACR_NAME }}.azurecr.io/gofiberapp:latest
 
       - name: Reminder
-        run: echo "⚠️ Vergeet niet je App Service te stoppen of verwijderen als je klaar bent."
