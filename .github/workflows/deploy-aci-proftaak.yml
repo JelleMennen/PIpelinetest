@@ -1,0 +1,49 @@
+name: Deploy GoFiber naar ACI Proftaak
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS_PROFTAAK }}
+
+      - name: Create ACR and use resource group
+        run: az acr create --name ${{ secrets.ACR_NAME_PROFTAAK }} --resource-group ${{ secrets.RESOURCE_GROUP_PROFTAAK }} --sku Basic --admin-enabled true
+
+      - name: Login to ACR
+        run: az acr login --name ${{ secrets.ACR_NAME_PROFTAAK }}
+
+      - name: Build Docker image
+        run: docker build -t ${{ secrets.ACR_NAME_PROFTAAK }}.azurecr.io/gofiberapp:latest .
+
+      - name: Push Docker image
+        run: docker push ${{ secrets.ACR_NAME_PROFTAAK }}.azurecr.io/gofiberapp:latest
+
+      - name: Deploy to ACI
+        run: |
+          az container create \
+            --name gofiberaci \
+            --resource-group ${{ secrets.RESOURCE_GROUP_PROFTAAK }} \
+            --image ${{ secrets.ACR_NAME_PROFTAAK }}.azurecr.io/gofiberapp:latest \
+            --registry-login-server ${{ secrets.ACR_NAME_PROFTAAK }}.azurecr.io \
+            --registry-username $(az acr credential show --name ${{ secrets.ACR_NAME_PROFTAAK }} --query username -o tsv) \
+            --registry-password $(az acr credential show --name ${{ secrets.ACR_NAME_PROFTAAK }} --query passwords[0].value -o tsv) \
+            --ports 80 \
+            --dns-name-label gofiberaci-${{ github.run_id }} \
+            --cpu 1 --memory 1.5 \
+            --location ${{ secrets.LOCATION_PROFTAAK }} \
+            --restart-policy Never \
+            --os-type Linux
+
+      - name: Reminder
+        run: echo "⚠️ Vergeet niet je ACI handmatig te verwijderen in Azure Portal of via CLI om kosten te besparen."
