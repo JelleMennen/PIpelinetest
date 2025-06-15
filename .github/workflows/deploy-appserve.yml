@@ -17,8 +17,42 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Create ACR if not exists
+        run: |
+          if ! az acr show --name ${{ secrets.ACR_NAME }} --resource-group ${{ secrets.RESOURCE_GROUP }} 2>/dev/null; then
+            az acr create --name ${{ secrets.ACR_NAME }} --resource-group ${{ secrets.RESOURCE_GROUP }} --sku Basic --admin-enabled true
+          else
+            echo "ACR bestaat al, skip."
+          fi
+
       - name: Login to ACR
         run: az acr login --name ${{ secrets.ACR_NAME }}    
+
+      - name: Create app servcie plan if not exists
+        run: |
+          if ! az appservice plan show --name "${{ secrets.APP_SERVICE_NAME }}-plan" --resource-group "${{ secrets.RESOURCE_GROUP }}" 2>/dev/null; then
+            az appservice plan create --name "${{ secrets.APP_SERVICE_NAME }}-plan" --resource-group "${{ secrets.RESOURCE_GROUP }}" --sku B1 --is-linux
+          else 
+            echo "App Service plan bestaat al"
+          fi
+
+      - name: Create web app if not exists
+        run: |
+          if ! az webapp show --name "${{ secrets.APP_SERVICE_NAME }}" --resource-group "${{ secrets.RESOURCE_GROUP }}" 2>/dev/null; then
+            az webapp create --resource-group "${{ secrets.RESOURCE_GROUP }}" --plan "${{ secrets.APP_SERVICE_NAME }}-plan" --name "${{ secrets.APP_SERVICE_NAME }}" --deployment-container-image-name "${{ secrets.ACR_NAME }}.azurecr.io/gofiberapp:latest"
+          else 
+            echo "Web App bestaat al"
+          fi 
+
+      - name: ACR Pull rights to web app
+        run: |
+          WEBAPP_ID=$(az webapp show --name "${{ secrets.APP_SERVICE_NAME }}" --resource-group "${{ secrets.RESOURCE_GROUP }}" --query "identity.principalId" -o tsv)
+          if [[ -z "$WEBAPP_ID" ]]; then
+           az webapp identity assign --name "${{ secrets.APP_SERVICE_NAME}}" --resource-group "${{ secrets.RESOURCE_GROUP}}"
+            WEBAPP_ID=$(az webapp show --name "${{ secrets.APP_SERVICE_NAME }}" --resource-group "${{ secrets.RESOURCE_GROUP }}" --query "identity.principalId" -o tsv)
+          fi
+          az role assignment create --assignee $WEBAPP_ID --scope $(az acr show --name ${{secrets.ACR_NAME }} --query id -o tsv) --role AcrPull || true
+
 
       - name: Build Docker image
         run: docker build -t ${{ secrets.ACR_NAME }}.azurecr.io/gofiberapp:latest .
@@ -31,6 +65,8 @@ jobs:
         with:
           app-name: ${{ secrets.APP_SERVICE_NAME }}
           images: ${{ secrets.ACR_NAME }}.azurecr.io/gofiberapp:latest
+
+
 
       - name: Reminder
         run: echo "Niet vergeten App Service te stoppen of verwijderen als ik klaar ben."
