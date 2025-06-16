@@ -1,4 +1,4 @@
-name: Deploy GoFiber naar ACI
+name: Deploy GoFiber naar  ACI
 
 on:
   push:
