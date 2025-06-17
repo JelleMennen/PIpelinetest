@@ -1,0 +1,25 @@
+<!-- views/login.html -->
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <title>Login</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <header>
+        <h1>Medewerker Login</h1>
+    </header>
+    <main>
+        <form action="/login" method="POST">
+            <label>Gebruikersnaam:</label>
+            <input type="text" name="username" required>
+
+            <label>Wachtwoord:</label>
+            <input type="password" name="password" required>
+
+            <button type="submit">Login</button>
+        </form>
+    </main>
+</body>
+</html>

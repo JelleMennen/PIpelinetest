@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 10px; border: 1px solid #ddd; text-align: center; }
+        input, select { padding: 5px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Dashboard - Reserveringen</h1>
+    <a href="/logout" class="button">Log uit</a>
+
+    <div>
+        <input type="text" id="filterNaam" placeholder="Filter op naam">
+        <select id="filterStatus">
+            <option value="">Alle statussen</option>
+            <option value="Bevestigd">Bevestigd</option>
+            <option value="In afwachting">In afwachting</option>
+            <option value="Geannuleerd">Geannuleerd</option>
+        </select>
+        <button onclick="applyFilter()">Filter</button>
+    </div>
+
+    <table id="reserveringen">
+        <thead>
+            <tr>
+                <th>Naam</th>
+                <th>Datum</th>
+                <th>Tijd</th>
+                <th>Activiteit</th>
+                <th>Status</th>
+                <th>Actie</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script>
+        let alleData = []
+
+        function loadData() {
+            fetch("/reservations")
+                .then(res => res.json())
+                .then(data => {
+                    alleData = data
+                    renderTable(data)
+                })
+        }
+
+        function renderTable(data) {
+            const tbody = document.querySelector("#reserveringen tbody")
+            tbody.innerHTML = ""
+            data.forEach(r => {
+                const row = document.createElement("tr")
+                row.innerHTML = `
+                    <td>${r.name}</td>
+                    <td>${r.date}</td>
+                    <td>${r.time}</td>
+                    <td>${r.status}</td>
+                    <td>
+                        <form action="/update/${r.id}" method="POST">
+                            <select name="status">
+                                <option ${r.status === 'In afwachting' ? 'selected' : ''}>In afwachting</option>
+                                <option ${r.status === 'Bevestigd' ? 'selected' : ''}>Bevestigd</option>
+                                <option ${r.status === 'Geannuleerd' ? 'selected' : ''}>Geannuleerd</option>
+                            </select>
+                            <button type="submit">Wijzig</button>
+                        </form>
+                    </td>
+                `
+                tbody.appendChild(row)
+            })
+        }
+
+        function applyFilter() {
+            const naam = document.getElementById("filterNaam").value.toLowerCase()
+            const status = document.getElementById("filterStatus").value
+            const gefilterd = alleData.filter(r => {
+                return (
+                    (r.name.toLowerCase().includes(naam)) &&
+                    (status === "" || r.status === status)
+                )
+            })
+            renderTable(gefilterd)
+        }
+
+        loadData()
+    </script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+<!-- reservering.html -->
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reservering maken</title>
+    <script src="https://unpkg.com/htmx.org@1.9.2"></script>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <header>
+        <h1>Maak een reservering</h1>
+    </header>
+    <main>
+        <form hx-post="/reservations" hx-target="#resultaat" hx-swap="innerHTML">
+            <label>Naam:</label>
+            <input type="text" name="name" required><br>
+        
+            <label>Datum:</label>
+            <input type="date" name="date" required><br>
+        
+            <label>Tijd:</label>
+            <input type="time" name="time" required><br>
+        
+            <label>Status:</label>
+            <select name="status">
+                <option value="Fietsverhuur">Fietsverhuur</option>
+                <option value="Mini-golf">Mini-golf</option>
+                <option value="Geen schoonmaak">Geen schoonmaak</option>
+            </select><br>
+        
+            <button type="submit">Reserveren</button>
+        </form>
+        <div id="resultaat"></div>
+    </main>
+</body>
+</html> 
