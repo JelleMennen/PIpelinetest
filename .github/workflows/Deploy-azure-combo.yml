@@ -1,0 +1,94 @@
+name: Deploy applicatie naar azure met keuze tool ACI of App Service
+
+on:
+  workflow_dispatch:
+   inputs:
+     azure_deploymet_target: 
+      description: "Kies naar welk platfrom gedeployed wordt"
+      required: true
+      default: "appservice"
+      type: choice
+      options:
+       - appservice
+       - aci
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+  steps:
+   - name: Checkout code
+     uses: actions/checkout@v3
+
+   - name: Login to Azure
+     uses: azure/login@v1
+     with:
+      creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+   - name: Create ACR if not exists
+     run: |
+       if ! az acr show --name ${{ secrets.ACR_NAME }} --resource-group ${{ secrets.RESOURCE_GROUP }} 2>/dev/null; then
+           az acr create --name ${{ secrets.ACR_NAME }} --resource-group ${{ secrets.RESOURCE_GROUP }} --sku Basic --admin-enabled true
+       else
+         echo "ACR bestaat al, skip."
+       fi
+
+   - name: Login to ACR
+     run: az acr login --name ${{ secrets.ACR_NAME }}  
+
+   - name: Build Docker image
+     run: docker build -t ${{ secrets.ACR_NAME }}.azurecr.io/gofiberapp:latest .
+
+   - name: Push Docker image
+     run: docker push ${{ secrets.ACR_NAME }}.azurecr.io/gofiberapp:latest
+
+   - name: Deploy to chosen platfrom
+     run: |
+       if [ "${{ github.event.inputs.azure_deploymet_target }}" = "appservice" ]; then
+          echo " Deploy to App Service"
+ 
+          if ! az appservice plan show --name "${{ secrets.APP_SERVICE_NAME }}-plan" --resource-group "${{ secrets.RESOURCE_GROUP }}" 2>/dev/null; then
+            az appservice plan create --name "${{ secrets.APP_SERVICE_NAME }}-plan" --resource-group "${{ secrets.RESOURCE_GROUP }}" --sku B1 --is-linux
+          else 
+            echo "App Service plan bestaat al"
+          fi
+
+          if ! az webapp show --name "${{ secrets.APP_SERVICE_NAME }}" --resource-group "${{ secrets.RESOURCE_GROUP }}" 2>/dev/null; then
+            az webapp create --resource-group "${{ secrets.RESOURCE_GROUP }}" --plan "${{ secrets.APP_SERVICE_NAME }}-plan" --name "${{ secrets.APP_SERVICE_NAME }}" --deployment-container-image-name "${{ secrets.ACR_NAME }}.azurecr.io/gofiberapp:latest"
+          else 
+            echo "Web App bestaat al"
+          fi 
+        
+          WEBAPP_ID=$(az webapp show --name "${{ secrets.APP_SERVICE_NAME }}" --resource-group "${{ secrets.RESOURCE_GROUP }}" --query "identity.principalId" -o tsv)
+          if [[ -z "$WEBAPP_ID" ]]; then
+            az webapp identity assign --name "${{ secrets.APP_SERVICE_NAME}}" --resource-group "${{ secrets.RESOURCE_GROUP}}"
+            WEBAPP_ID=$(az webapp show --name "${{ secrets.APP_SERVICE_NAME }}" --resource-group "${{ secrets.RESOURCE_GROUP }}" --query "identity.principalId" -o tsv)
+          fi
+
+          az role assignment create --assignee $WEBAPP_ID --scope $(az acr show --name ${{secrets.ACR_NAME }} --query id -o tsv) --role AcrPull || true
+
+         echo " Deploy to App Service done. "
+
+       else 
+         echo "Deploy to ACI"
+
+        az container create \
+          --name gofiberaci \
+          --resource-group ${{ secrets.RESOURCE_GROUP }} \
+          --image ${{ secrets.ACR_NAME }}.azurecr.io/gofiberapp:latest \
+          --registry-login-server ${{ secrets.ACR_NAME }}.azurecr.io \
+          --registry-username $(az acr credential show --name ${{ secrets.ACR_NAME }} --query username -o tsv) \
+          --registry-password $(az acr credential show --name ${{ secrets.ACR_NAME }} --query passwords[0].value -o tsv) \
+          --ports 80 \
+          --dns-name-label gofiberaci-${{ github.run_id }} \
+          --cpu 1 --memory 1.5 \
+          --location ${{ secrets.LOCATION }} \
+          --restart-policy Never \
+          --os-type Linux
+        
+        echo "Deploy to ACI done"
+
+   - name: Reminder
+     run: echo " ⚠️ Niet vergeten ongebruikte resource te verwijderen."
+  
+    
