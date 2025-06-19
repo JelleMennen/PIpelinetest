@@ -24,6 +24,17 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Debug secrets values (niet de wachtwoorden zelf)
+        run: |
+          echo "DB_HOST: ${{ secrets.DB_HOST }}"
+          echo "DB_USER: ${{ secrets.DB_USER }}"
+          echo "DB_PASS: [VERBORGEN]"
+
+      - name: Test database connection
+        run: |
+          echo "Testing database conncetion"
+          timeout 10 bash -c "until echo 'SELECT 1' | mysql -h ${{ secrets.DB_HOST }} -u${{ secrets.DB_USER }} -p${{secrets.DB_PASS }}; do echo 'Wait op DB'; sleep 2; done"
+
       - name: Create ACR if not exists
         run: |
          if ! az acr show --name ${{ secrets.ACR_NAME }} --resource-group ${{ secrets.RESOURCE_GROUP }} 2>/dev/null; then
@@ -40,11 +51,6 @@ jobs:
 
       - name: Push Docker image
         run: docker push ${{ secrets.ACR_NAME }}.azurecr.io/gofiberapp:latest
-
-      - name: Test database connection
-        run: |
-          echo "Testing database conncetion"
-          timeout 10 bash -c "until echo 'SELECT 1' | mysql -h ${{ secrets.DB_HOST }} -u${{ secrets.DB_USER }} -p${{secrets.DB_PASS }}; do echo 'Wait op DB'; sleep 2; done"
 
       - name: Deploy to chosen platfrom
         run: |
