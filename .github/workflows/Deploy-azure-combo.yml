@@ -4,48 +4,46 @@ on:
   workflow_dispatch:
    inputs:
      azure_deploymet_target: 
-      description: "Kies naar welk platfrom gedeployed wordt"
-      required: true
-      default: "appservice"
-      type: choice
-      options:
-       - appservice
-       - aci
+       description: "Kies naar welk platfrom gedeployed wordt"
+       required: true
+       default: "appservice"
+       type: choice
+       options:
+         - appservice
+         - aci
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
 
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-  steps:
-   - name: Checkout code
-     uses: actions/checkout@v3
-
-   - name: Login to Azure
-     uses: azure/login@v1
-     with:
-      creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-   - name: Create ACR if not exists
-     run: |
-       if ! az acr show --name ${{ secrets.ACR_NAME }} --resource-group ${{ secrets.RESOURCE_GROUP }} 2>/dev/null; then
+      - name: Create ACR if not exists
+        run: |
+         if ! az acr show --name ${{ secrets.ACR_NAME }} --resource-group ${{ secrets.RESOURCE_GROUP }} 2>/dev/null; then
            az acr create --name ${{ secrets.ACR_NAME }} --resource-group ${{ secrets.RESOURCE_GROUP }} --sku Basic --admin-enabled true
-       else
-         echo "ACR bestaat al, skip."
-       fi
+         else
+          echo "ACR bestaat al, skip."
+         fi
 
-   - name: Login to ACR
-     run: az acr login --name ${{ secrets.ACR_NAME }}  
+      - name: Login to ACR
+        run: az acr login --name ${{ secrets.ACR_NAME }}  
 
-   - name: Build Docker image
-     run: docker build -t ${{ secrets.ACR_NAME }}.azurecr.io/gofiberapp:latest .
+      - name: Build Docker image
+        run: docker build -t ${{ secrets.ACR_NAME }}.azurecr.io/gofiberapp:latest .
 
-   - name: Push Docker image
-     run: docker push ${{ secrets.ACR_NAME }}.azurecr.io/gofiberapp:latest
+      - name: Push Docker image
+        run: docker push ${{ secrets.ACR_NAME }}.azurecr.io/gofiberapp:latest
 
-   - name: Deploy to chosen platfrom
-     run: |
-       if [ "${{ github.event.inputs.azure_deploymet_target }}" = "appservice" ]; then
+      - name: Deploy to chosen platfrom
+        run: |
+         if [ "${{ github.event.inputs.azure_deploymet_target }}" = "appservice" ]; then
           echo " Deploy to App Service"
  
           if ! az appservice plan show --name "${{ secrets.APP_SERVICE_NAME }}-plan" --resource-group "${{ secrets.RESOURCE_GROUP }}" 2>/dev/null; then
@@ -68,12 +66,12 @@ jobs:
 
           az role assignment create --assignee $WEBAPP_ID --scope $(az acr show --name ${{secrets.ACR_NAME }} --query id -o tsv) --role AcrPull || true
 
-         echo " Deploy to App Service done. "
+          echo " Deploy to App Service done. "
 
-       else 
-         echo "Deploy to ACI"
+         else 
+          echo "Deploy to ACI"
 
-        az container create \
+         az container create \
           --name gofiberaci \
           --resource-group ${{ secrets.RESOURCE_GROUP }} \
           --image ${{ secrets.ACR_NAME }}.azurecr.io/gofiberapp:latest \
@@ -87,9 +85,9 @@ jobs:
           --restart-policy Never \
           --os-type Linux
         
-        echo "Deploy to ACI done"
+         echo "Deploy to ACI done"
 
-   - name: Reminder
-     run: echo " ⚠️ Niet vergeten ongebruikte resource te verwijderen."
+      - name: Reminder
+        run: echo " ⚠️ Niet vergeten ongebruikte resource te verwijderen."
   
     
