@@ -41,6 +41,11 @@ jobs:
       - name: Push Docker image
         run: docker push ${{ secrets.ACR_NAME }}.azurecr.io/gofiberapp:latest
 
+      - name: Test database connection
+        run: |
+          echo "Testing database conncetion"
+          timeout 10 bash -c "until echo 'SELECT 1' | mysql -h ${{ secrets.DB_HOST }} -u${{ secrets.DB_USER }} -p${{secrets.DB_PASS }}; do echo 'Wait op DB'; sleep 2; done"
+
       - name: Deploy to chosen platfrom
         run: |
          if [ "${{ github.event.inputs.azure_deploymet_target }}" = "appservice" ]; then
