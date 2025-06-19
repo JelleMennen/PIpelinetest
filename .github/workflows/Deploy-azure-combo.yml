@@ -86,6 +86,7 @@ jobs:
           --os-type Linux
         
          echo "Deploy to ACI done"
+         fi
 
       - name: Reminder
         run: echo " ⚠️ Niet vergeten ongebruikte resource te verwijderen."
