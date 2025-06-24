@@ -58,7 +58,7 @@ jobs:
           echo " Deploy to App Service"
  
           if ! az appservice plan show --name "${{ secrets.APP_SERVICE_NAME }}-plan" --resource-group "${{ secrets.RESOURCE_GROUP }}" 2>/dev/null; then
-            az appservice plan create --name "${{ secrets.APP_SERVICE_NAME }}-plan" --resource-group "${{ secrets.RESOURCE_GROUP }}" --sku B1 --is-linux
+            az appservice plan create --name "${{ secrets.APP_SERVICE_NAME }}-plan" --resource-group "${{ secrets.RESOURCE_GROUP }}" --sku P1v2 --is-linux
           else 
             echo "App Service plan bestaat al"
           fi
